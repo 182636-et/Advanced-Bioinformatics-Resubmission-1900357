@@ -1,0 +1,130 @@
+#!/usr/bin/bash
+
+#This is the NGS pipleine for the bioinformatic resubmission assignment. In this assignment, we will be transforming raw data and then performi>#In the first instance, we must make sure that we are in the correct directory, using "pwd" command.
+pwd
+
+#To keep the data organised throughout the pipeline, we will be organising the data according to the different stages.
+cd ~/dna_seq/data
+mkdir fastqc
+cd fastqc
+mkdir trimmed
+mkdir untrimmed
+
+#Folowing this, the data required which consists of two fastq files and one bed file is loaded.
+wget https://s3-eu-west-1.amazonaws.com/workshopdata2017/NGS0001.R1.fastq.qz
+wget https://s3-eu-west-1.amazonaws.com/workshopdata2017/NGS0001.R2.fastq.qz
+wget https://s3-eu-west-1.amazonaws.com/workshopdata2017/annotation.bed
+
+#Once the data is downloaded, the data is moved into the untrimmed fastq directory.
+mv *fastq.qz ~/NGS_pipeline/dna_seq/data/fastq/untrimmed
+mv annotation.bed ~/NGS_pipeline/dna_seq/data
+
+#A reference genome is also used as this will be necessary during the mapping / alignment stages of the data analysis.
+wget http://hgdownload.cse.ucsc.edu/goldenPath/hg19/bigZips/hg19.fa.gz
+mv hg19.fa.gz ~/NGS_pipeline/dna_seq/data
+
+#Once all the data is downloaded, and organised ; all the tools required will be installed. The following step requires us to the in the root directory
+cd ~/
+
+#The tools used include factqc, trimmomatic, SAM, and BAM.
+wget https://repo.anaconda.com/archive/Anaconda3-2022.10-Linux-x86_64.sh
+chmod +x ./Anaconda3-2022.10-Linux-x86_64.sh
+bash ./Anaconda3-2022.10-Linux-x86_64.sh
+source ~/.bashrc
+
+#The conda install command is used to install all the tools.
+conda install samtools
+conda install bwa
+conda install freebayes
+conda install picard
+conda install bedtools
+conda install trimmomatic
+conda install fastqc
+conda install vcflib
+conda install snpeff
+conda install samstats
+
+#In the next steps, the quality of the data will be assessed using the FASTQC tool.For simplicity and organisation, the directory is changed to
+cd ~/NGS_pipeline/dna_seq/data/fastqc/untrimmed
+fastqc *.fastq.qz
+fastqc -t 4 *.fastq.qz
+ls -lh ~/NGS_pipeline/dna_seq/data/fastqc/untrimmed
+
+#In this next chunk, a loop is used to unzip several files at once, within the fastqc_untrimmed reads sub-directory.
+cd ~/NGS_pipeline/dna_seq/data/fastqc/untrimmed
+for zip in *.zip
+> do
+> unzip $zip
+> done
+
+#Once we have assessed the quality of the data given, we can "trim" the data that is of a lesser quality, including low read counts for bases or sequences of bases. This is completed using the "trimmomatic" tool.
+
+#Firstly, the directory must be changed.
+cd ~/NGS_pipeline/dna_seq/data/fastqc/untrimmed
+
+#The following chunk reflects the inputs and outputs required for trimmomatic to function. After this step, only the data that meets the criter>trimmomatic PE  \
+  -threads 4 \
+  -phred33 \
+   ~bioinformatics_assessment_resubmision/NGS_pipeline/dna_seq/data/NG
+  -baseout /NGS_pipeline/dna_seq/data/fastqc/trimmed NGS0001.unpaired_R1.fastq.qz NGS0001.paired_R1.fastq.qz NGS0001.unpaired_R2.fastq.qz NGS00>  ILLUMINACLIP:~/home/ubuntu/anaconda3/trimmomatic-0.39-/adapters/NexteraPE-PE.fa:2:30:10 \
+  TRAILING:25 MINLEN:50
+
+#Once the data has been trimmed, the sequencing data can be aligned to the reference genome that was previously downloaded using the BWA-MEM to>mkdir ~bioinformatics_assessment_resubmission/NGS_pipeline/dna_seq/data/alignment
+mkdir -p ~/NGS_pipeline/dna_seq/data/reference
+mv ~/NGS_pipeline/dna_seq/data/hg19.fa.gz ~/NGS_pipeline/dna_seq/data/reference/
+bwa index ~/NGS_pipeline/dna_seq/data/reference/hg19.fa.gz
+bwa mem -t 4 -v 1  ~/NGS_pipeline/dna_seq/data/reference/hg19.fa.gz ~/NGS_pipeline/dna_seq/data/fastqc/trimmed/NGS0001.paired_R1.fastq.qz ~/NGS>
+
+#In the next step, the SAM file is converted into a BAN format.First, we must move to the correct directory:
+cd ~/NGS_pipeline/dna_seq/data/aligned_data
+samtools view -h -b NGS0001.paired_R1.sam > NGS0001.R1.bam #IMPORTANT: depending on your samtools version, you might need to add the -S option >
+
+samtools sort NGS0001.paired_R1.bam > NGS0001.R1_sorted.bam #IMPORTANT: depending on your samtools version, you might need to add the -o option>
+
+samtools index NGS0001.R1_sorted.bam #This will generate a .bai index file
+
+#A similar function should be conducted with the 2nd NGS file.
+samtools view -h -b NGS0001.paired_R2.sam > NGS0001.R2.bam
+
+samtools sort NGS0001.paired_R2.bam > NGS0001.R2_sorted.bam
+
+samtools index NGS0001.R2_sorted.bam #This will generate a .bai index file
+
+#Following this, the "Picard" tool is used to mark duplicates. This tool identifies duplicates within the sequence, excluding poor quality read>picard MarkDuplicates I=NGS0001.R1_sorted.bam O=NGS0001.R1_sorted_marked.bam M=marked_dup_metrics.txt
+samtools index NGS0001.R1_sorted_marked.bam
+
+#The same tool is used for the R2 NGS file. The input file is the sorted BAM file whereas the output file is the sorted and marked duplicates f>picard MarkDuplicates I=NGS001.R2_sorted.bam O=NGS0001.R2_sorted_marked.bam M=marked_dup_metrics.txt
+
+#In the last stage of Data alignment, the reads should be filtered according to several different criteria.
+samtools view -F 1796  -q 20 -o NGS001.R1_sorted_filtered.bam NGS0001.R1_sorted_marked.bam
+samtools index NGS0001.R1_sorted_filtered.bam
+
+samtools view -F 1796  -q 20 -o NGS0001.R2_sorted_filtered.bam NGS0001.R2_sorted_marked.bam
+samtools index NGS0001.R2_sorted_filtered.bam
+
+# Below are the steps required for variant calling using Freebayes. This will identify single nucleotide polymorphisms, as well as insertions a>zcat ~/NGS_pipeline/dna_seq/data/reference/hg19.fa.gz > ~/NGS_pipeline/dna_seq/data/reference/hg19.fa
+samtools faidx ~/NGS_pipeline/dna_seq/data/reference/hg19.fa
+freebayes --bam ~/NGS_pipeline/dna_seq/data/aligned_dataNGS0001.R1_sorted_filtered.bam --fasta-reference ~/NGS_pipeline/dna_seq/data/reference/>bgzip ~/NGS_pipeline/dna_seq/results/NGS0001.R1.vcf
+tabix -p vcf ~/NGS_pipeline/dna_seq/results/NGS0001.R1.vcf.gz
+
+zcat ~/NGS_pipeline/dna_seq/data/reference/hg19.fa.gz > ~/NGS_pipeline/dna_seq/data/reference/hg19.fa
+samtools faidx ~/NGS_pipeline/dna_seq/data/reference/hg19.fa
+freebayes --bam ~/NGS_pipeline/dna_seq/data/aligned_dataNGS0001.R2_sorted_filtered.bam --fasta-reference ~/NGS_pipeline/dna_seq/data/reference/>tabix -p vcf ~/NGS_pipeline/dna_seq/results/NGS0001.R2.vcf.gz
+
+#The next step is to filter the variants. The tool for variant filtering is installed using the "conda install" command.
+conda install vcflib
+vcffilter -f "QUAL > 1 & QUAL / AO > 10 & SAF > 0 & SAR > 0 & RPR > 1 & RPL > 1" \
+        ~/NGS_pipeline/dna_seq/results/WES01_chr22m.vcf.gz > ~/NGS_pipeline/dna_seq/results/WES01_chr22m_filtered.vcf
+
+
+#The bedtools coverage tool looks both at read depth and breadth of coverage of sequences of aligned and fitered data.This will determine the r> bedtools intersect -header -wa -a ~/NGS_pipeline/dna_seq/results/NGS0001.R1_filtered.vcf -b ../annotation.hg19.bed \
+        > ~/NGS_pipeline/dna_seq/results/NGS0001.R1_filtered.vcf
+bgzip ~/NGS_pipeline/dna_seq/results/NGS0001.R1_filtered.vcf
+tabix -p vcf ~/NGS_pipeline/dna_seq/results/NGS0001.R1.vcf.gz
+
+ bedtools intersect -header -wa -a ~/NGS_pipeline/dna_seq/results/NGS0001.R2_filtered.vcf -b ../annotation.hg19.bed \
+        > ~/NGS_pipeline/dna_seq/results/NGS0001.R2_filtered.vcf
+bgzip ~/NGS_pipeline/dna_seq/results/NGS0001.R2_filtered.vcf
+tabix -p vcf ~/NGS_pipeline/dna_seq/results/NGS0001.R2.vcf.gz
+
+#This is the complete NGS pipeline from loading, and installation of tools to variant annotation/filtering.
