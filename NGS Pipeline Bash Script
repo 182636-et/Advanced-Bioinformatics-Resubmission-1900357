@@ -62,12 +62,8 @@ for zip in *.zip
 #Firstly, the directory must be changed.
 cd ~/NGS_pipeline/dna_seq/data/fastqc/untrimmed
 
-#The following chunk reflects the inputs and outputs required for trimmomatic to function. After this step, only the data that meets the criter>trimmomatic PE  \
-  -threads 4 \
-  -phred33 \
-   ~bioinformatics_assessment_resubmision/NGS_pipeline/dna_seq/data/NG
-  -baseout /NGS_pipeline/dna_seq/data/fastqc/trimmed NGS0001.unpaired_R1.fastq.qz NGS0001.paired_R1.fastq.qz NGS0001.unpaired_R2.fastq.qz NGS00>  ILLUMINACLIP:~/home/ubuntu/anaconda3/trimmomatic-0.39-/adapters/NexteraPE-PE.fa:2:30:10 \
-  TRAILING:25 MINLEN:50
+#The following chunk reflects the inputs and outputs required for trimmomatic to function. After this step, only the data that meets the criter>
+java -jar trimmomatic/trimmomatic-0.39.jar \ trimmomatic PE  \ -threads 4 \ -phred33 \ ~bioinformatics_assessment_resubmision/NGS_pipeline/dna_seq/data/NGS0001.R1.fastq.qz ~/bioinformatics_assessment_resubmission/NGS_pipeline/dna_seq/data/NGS0001.R2.fastq.qz -baseout ~/bioinformatics_assessment_resubmission/NGS_pipeline/dna_seq/data/fastqc/trimmed NGS0001.unpaired_R1.fastq.qz NGS0001.paired_R1.fastq.qz NGS0001.unpaired_R2.fastq.qz NGS0001.paired_R2.fastq.qz ILLUMINACLIP:~/home/ubuntu/anaconda3/trimmomatic-0.39-/adapters/NexteraPE-PE.fa:2:30:10 \ TRAILING:25 MINLEN:50
 
 #Once the data has been trimmed, the sequencing data can be aligned to the reference genome that was previously downloaded using the BWA-MEM to>mkdir ~bioinformatics_assessment_resubmission/NGS_pipeline/dna_seq/data/alignment
 mkdir -p ~/NGS_pipeline/dna_seq/data/reference
