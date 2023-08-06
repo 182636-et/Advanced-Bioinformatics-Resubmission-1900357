@@ -1,0 +1,346 @@
+---
+title: "RNA-Seq Analysis 1900357"
+author: '1900357'
+date: "2023-08-04"
+output: html_document
+---
+#In the first instance, we must know where we are working. In this case, we will used the "getwd()" command to find this out. We will use the downloaded file which contains the RNA-Seq Data we need as our set directory for this assignment. 
+```{r}
+getwd()
+```
+```{r}
+setwd("C:/Users/user/Downloads/LMS_RNAseq_short-master-2023-final")
+```
+
+
+#In this session, we aim to analyse RNA-Seq data provided.To do this, packages required for analysis interpretation and visualisation such as "ggplots2" and "pheatmap" are loaded into R. 
+```{r}
+library("DESeq2")
+library("pheatmap")
+library("RColorBrewer")
+library("ggplot2")
+install.packages("KEGG.db")
+install.packages("goseq")
+install.packages("org.Mm.db.eg")
+install.packages("org.Hs.db.eg")
+library("biomaRt")
+```
+
+```{r}
+print("Loading Data and Creating a DESeq Object")
+```
+
+#The first step prior to analysis is to load the data that we will be working with into R. This is completed by using the "read.csv" and "read.table" functions. 
+```{r}
+counts_data <- read.csv("C:/Users/user/Downloads/LMS_RNAseq_short-master-2023-final/LMS_RNAseq_short-master-2023-final/course/exercises/data/exercise1_counts.csv")
+```
+
+```{r}
+head(counts_data)
+```
+#The information is loaded into the R environment using the "read.table" function. 
+```{r}
+sample_description_text <- read.table("C:/Users/user/Downloads/LMS_RNAseq_short-master-2023-final/LMS_RNAseq_short-master-2023-final/course/exercises/data/exercise1_sample_description.info")
+```
+
+#The "head" function allows us to visualise the data. 
+```{r}
+head("sample_description_text")
+```
+
+```{r}
+colnames(sample_description_text) <- paste("Replicate", 2:4, sep = "")
+rownames(sample_description_text) <- paste("Gene lengths", 1:10, sep = "")
+```
+
+```{r}
+head(sample_description_text)
+```
+
+```{r}
+gene_lengths <- c(2, 4, 1, 10)
+```
+
+```{r}
+read_depths <- colSums(counts_data)
+```
+
+```{r}
+read_depths_tens <- read_depths / 10
+head(read_depths_tens)
+```
+
+```{r}
+counts_data_RPM <- t(counts_data) / read_depths_tens
+counts_data_RPM <- t(counts_data_RPM)
+```
+
+```{r}
+head(counts_data_RPM)
+```
+
+```{r}
+counts_data_RPKM <- counts_data_RPM / gene_lengths
+```
+
+```{r}
+head(counts_data_RPKM)
+```
+
+```{r}
+colnames(counts_data_RPKM) <- paste("RPKM-Rep", 1:10, sep = "")
+data_matrix_RPKM <- as.data.frame(counts_data_RPKM)
+class(counts_data_RPKM)
+```
+
+```{r}
+head(data_matrix_RPKM)
+```
+```{r}
+data_matrix_RPK <- counts_data / gene_lengths
+```
+
+```{r}
+head(data_matrix_RPK)
+```
+
+```{r}
+read_depths2 <- colSums(data_matrix_RPK)
+```
+
+```{r}
+read_depths2_tens <- read_depths2 / 10
+head(read_depths2_tens)
+```
+
+```{r}
+data_matrix_TPM <- t(data_matrix_RPK) / read_depths2_tens
+data_matrix_TPM <- t(data_matrix_TPM)
+```
+
+```{r}
+head(data_matrix_TPM)
+```
+
+```{r}
+head(counts_data_RPKM)
+```
+
+```{r}
+total_RPKM <- colSums(counts_data_RPKM)
+head(total_RPKM)
+```
+
+```{r}
+head(data_matrix_TPM)
+```
+
+```{r}
+total_TPM <- colSums(data_matrix_TPM)
+head(total_TPM)
+```
+
+```{r}
+print("Normalization in DESeq2")
+```
+
+```{r}
+print("Differential Expression analysis: DESeq2")
+```
+
+```{r}
+all_counts <- read.csv(file = "C:/Users/user/Downloads/LMS_RNAseq_short-master-2023-final/LMS_RNAseq_short-master-2023-final/course/exercises/data/exercise1_counts.csv", row.names = 1)
+```
+
+```{r}
+head(all_counts)
+```
+
+```{r}
+dim(all_counts)
+```
+
+```{r}
+class(all_counts)
+```
+
+```{r}
+sam_des <- read.table("C:/Users/user/Downloads/LMS_RNAseq_short-master-2023-final/LMS_RNAseq_short-master-2023-final/course/exercises/data/exercise1_sample_description.info", sep = "\t", header = TRUE)
+```
+
+```{r}
+head(sam_des)
+```
+
+```{r}
+dim(sam_des)
+```
+
+```{r}
+class(sam_des)
+```
+
+```{r}
+col_data <- data.frame(Sample = sam_des$Sample,
+                  Group = sam_des$Group,
+                  Batch = sam_des$Batch)
+
+```
+
+```{r}
+col_data$Sample <- as.factor(col_data$Sample)
+col_data$Group <- as.factor(col_data$Group)
+col_data$Batch <- as.factor(col_data$Batch)
+```
+
+```{r}
+all(colnames(all_counts) == sam_des$Sample)
+```
+
+```{r}
+library(DESeq2)
+```
+
+
+```{r}
+metaData <- read.csv("C:/Users/user/Downloads/LMS_RNAseq_short-master-2023-final/LMS_RNAseq_short-master-2023-final/course/exercises/data/exercise1_counts.csv", header = TRUE, sep = ",")
+```
+
+```{r}
+metaData <- as.matrix.data.frame(counts_data)
+```
+
+```{r}
+coldata <- DataFrame(counts_data)
+coldata <- lapply(coldata, as.factor)
+coldata
+
+```
+
+
+```{r}
+dds <- DESeqDataSet(countData = "all_counts", 
+                    colData = "col_data", 
+                    design = ~Group)
+```
+
+```{r}
+sizeFactors(dds)
+```
+
+```{r}
+head(dispersions(dds))
+```
+
+```{r}
+plotDispEsts(dds)
+```
+
+```{r}
+nbinomWaldTest(dds)
+```
+
+```{r}
+res <- results(dds)
+head(res)
+```
+
+```{r}
+res_ordered <- res[order(res$padj), ]
+head(res_ordered)
+```
+
+```{r}
+rld <- rlog(dds)
+class(rld)
+```
+
+```{r}
+rld_counts <- assay(rld)
+class(rld_counts)
+```
+
+```{r}
+vsd <- varianceStabilizingTransformation(dds)
+class(vsd)
+```
+
+```{r}
+vsd_counts <- assay(vsd)
+class(vsd_counts)
+```
+
+```{r}
+library("pheatmap")
+
+# Get dds normalized counts
+dds_counts <- counts(dds, normalized = TRUE)
+head(dds_counts)
+```
+
+```{r}
+select <- order(rowMeans(dds_counts), decreasing = TRUE)[1:20]
+head(select)
+```
+
+```{r}
+pheatmap(assay(rld)[select, ])
+```
+
+```{r}
+pheatmap(assay(vsd)[select, ])
+```
+
+```{r}
+print("Sample Distance Matrix")
+```
+
+```{r}
+sample_dist <- dist(t(assay(rld)))
+class(sample_dist)
+```
+
+```{r}
+sdm <- as.matrix(sample_dist)
+class(sdm)
+```
+
+```{r}
+library("RColorBrewer")
+
+# Add row names for clear plot
+rownames(sdm) <- rld$Group
+colnames(sdm) <- NULL
+
+# Add colors
+colors <- colorRampPalette(rev(brewer.pal(9, "Blues")))(255)
+```
+
+```{r}
+pheatmap(sdm,
+         clustering_distance_rows = sample_dist,
+         clustering_distance_cols = sample_dist,
+         col = colors)
+```
+
+```{r}
+print("Principal Component Analysis")
+```
+
+```{r}
+plotPCA(rld, intgroup = "Group")
+```
+
+```{r}
+library(ggplot2)
+ggsave(file = "figures/PCA_plot_rld.png")
+```
+
+```{r}
+plotPCA(vsd, intgroup = "Group")
+```
+
+```{r}
+library(ggplot2)
+ggsave(file = "figures/PCA_plot_vst.png")
+```
