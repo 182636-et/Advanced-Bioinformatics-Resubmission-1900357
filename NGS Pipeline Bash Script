@@ -59,11 +59,13 @@ for zip in *.zip
 
 #Once we have assessed the quality of the data given, we can "trim" the data that is of a lesser quality, including low read counts for bases or sequences of bases. This is completed using the "trimmomatic" tool.
 
-#Firstly, the directory must be changed.
-cd ~/NGS_pipeline/dna_seq/data/fastqc/untrimmed
-
 #The following chunk reflects the inputs and outputs required for trimmomatic to function. After this step, only the data that meets the criter>
-java -jar trimmomatic/trimmomatic-0.39.jar \ trimmomatic PE  \ -threads 4 \ -phred33 \ ~bioinformatics_assessment_resubmision/NGS_pipeline/dna_seq/data/NGS0001.R1.fastq.qz ~/bioinformatics_assessment_resubmission/NGS_pipeline/dna_seq/data/NGS0001.R2.fastq.qz -baseout ~/bioinformatics_assessment_resubmission/NGS_pipeline/dna_seq/data/fastqc/trimmed NGS0001.unpaired_R1.fastq.qz NGS0001.paired_R1.fastq.qz NGS0001.unpaired_R2.fastq.qz NGS0001.paired_R2.fastq.qz ILLUMINACLIP:~/home/ubuntu/anaconda3/trimmomatic-0.39-/adapters/NexteraPE-PE.fa:2:30:10 \ TRAILING:25 MINLEN:50
+ trimmomatic PE  \ 
+-threads 4 \ 
+-phred33 \ 
+-basein bioinformatics_assessment_resubmision/NGS_pipeline/dna_seq/data/NGS0001.R1.fastq.qz bioinformatics_assessment_resubmission/NGS_pipeline/dna_seq/data/NGS0001.R2.fastq.qz 
+-baseout ~/bioinformatics_assessment_resubmission/NGS_pipeline/dna_seq/data/fastqc/trimmed \ 
+ILLUMINACLIP:~/home/ubuntu/anaconda3/trimmomatic-0.39-/adapters/NexteraPE-PE.fa:2:30:10 \ TRAILING:25 MINLEN:50
 
 #Once the data has been trimmed, the sequencing data can be aligned to the reference genome that was previously downloaded using the BWA-MEM to>mkdir ~bioinformatics_assessment_resubmission/NGS_pipeline/dna_seq/data/alignment
 mkdir -p ~/NGS_pipeline/dna_seq/data/reference
@@ -72,23 +74,23 @@ bwa index ~/NGS_pipeline/dna_seq/data/reference/hg19.fa.gz
 bwa mem -t 4 -v 1  ~/NGS_pipeline/dna_seq/data/reference/hg19.fa.gz ~/NGS_pipeline/dna_seq/data/fastqc/trimmed/NGS0001.paired_R1.fastq.qz ~/NGS>
 
 #In the next step, the SAM file is converted into a BAN format.First, we must move to the correct directory:
+
 cd ~/NGS_pipeline/dna_seq/data/aligned_data
-samtools view -h -b NGS0001.paired_R1.sam > NGS0001.R1.bam #IMPORTANT: depending on your samtools version, you might need to add the -S option >
-
-samtools sort NGS0001.paired_R1.bam > NGS0001.R1_sorted.bam #IMPORTANT: depending on your samtools version, you might need to add the -o option>
-
+samtools view -h -b NGS0001.paired_R1.sam > NGS0001.R1.bam 
+samtools sort NGS0001.paired_R1.bam > NGS0001.R1_sorted.bam 
 samtools index NGS0001.R1_sorted.bam #This will generate a .bai index file
 
 #A similar function should be conducted with the 2nd NGS file.
 samtools view -h -b NGS0001.paired_R2.sam > NGS0001.R2.bam
-
 samtools sort NGS0001.paired_R2.bam > NGS0001.R2_sorted.bam
-
 samtools index NGS0001.R2_sorted.bam #This will generate a .bai index file
+
+## alignment statistics using samtools
+samtools flagstat NGS0001.R1_sorted.bam
+samtools idxstats NGS0001.R2_sorted.bam
 
 #Following this, the "Picard" tool is used to mark duplicates. This tool identifies duplicates within the sequence, excluding poor quality read>picard MarkDuplicates I=NGS0001.R1_sorted.bam O=NGS0001.R1_sorted_marked.bam M=marked_dup_metrics.txt
 samtools index NGS0001.R1_sorted_marked.bam
-
 #The same tool is used for the R2 NGS file. The input file is the sorted BAM file whereas the output file is the sorted and marked duplicates f>picard MarkDuplicates I=NGS001.R2_sorted.bam O=NGS0001.R2_sorted_marked.bam M=marked_dup_metrics.txt
 
 #In the last stage of Data alignment, the reads should be filtered according to several different criteria.
@@ -123,4 +125,4 @@ tabix -p vcf ~/NGS_pipeline/dna_seq/results/NGS0001.R1.vcf.gz
 bgzip ~/NGS_pipeline/dna_seq/results/NGS0001.R2_filtered.vcf
 tabix -p vcf ~/NGS_pipeline/dna_seq/results/NGS0001.R2.vcf.gz
 
-#This is the complete NGS pipeline from loading, and installation of tools to variant annotation/filtering.
+
