@@ -1,0 +1,136 @@
+---
+title: "RNA-Seq Analysis 1900357"
+author: '1900357'
+date: "2023-08-04"
+output: html_document
+---
+#In the first instance, we must know where we are working. In this case, we will used the "getwd()" command to find this out. We will then read in the files required for this RNA-Seq analysis.
+
+#In this session, we aim to analyse RNA-Seq data provided.To do this, packages required for analysis interpretation and visualisation such as "ggplots2" and "pheatmap" are loaded into R. 
+#The first step prior to analysis is to load the data that we will be working with into R. This is completed by using the "read.csv" and "read.table" functions. 
+```{r}
+#Task 3.8
+getwd()
+
+setwd("C:/Users/user/Downloads/LMS_RNAseq_short-master-2023-final")
+
+counts_data <- read.csv("C:/Users/user/Downloads/LMS_RNAseq_short-master-2023-final/LMS_RNAseq_short-master-2023-final/course/exercises/data/exercise1_counts.csv", row.names = 1)
+
+#The information is loaded into the R environment using the "read.table" function. 
+
+sample_description_text <- read.table("C:/Users/user/Downloads/LMS_RNAseq_short-master-2023-final/LMS_RNAseq_short-master-2023-final/course/exercises/data/exercise1_sample_description.info",sep = "\t" ,header = TRUE )
+```
+
+
+#Next, we are creating col_data and checking dimensions prior to making a DESeq2 Object.
+```{r}
+#Task 3.9
+col_data <- data.frame(sample = sample_description_text$sample,
+                       condition = sample_description_text$condition,
+                       batch = sample_description_text$batch)
+
+
+col_data$sample <- as.factor(col_data$sample)
+col_data$condition <- as.factor(col_data$condition)
+col_data$batch <- as.factor(col_data$batch)
+
+
+all(colnames(counts_data) == sample_description_text$sample)
+all(colnames(counts_data) == sample_description_text$condition)
+all(colnames(counts_data) == sample_description_text$batch)
+```
+
+#Here, we are making a DESeq2 object. The DESeq2 tool is a very popular tool for RNA-Seq analyses such as differential gene expression analysis. It helps estimate the variation for a given mean value and assumes that genes with similar expression levels will be similarly dispersed. This means that it brings all the data points 'towards' the mean values to create a more cohesive dataset.
+#From this point, the output of the DESeq object (dds) is what we will be working with.
+```{r}
+#Task 3.10
+#ibrary is loaded into R
+library(DESeq2)
+
+#DESeq2 object is created
+dds <- DESeqDataSetFromMatrix(countData = counts_data, 
+                             colData = col_data, 
+                             design = ~condition)
+
+
+# DESeq normalization
+dds <- DESeq(dds)
+```
+
+
+#In this task, we are performing rlog and VST transformation on the data. The log transformation is used to reduce skewedness within the dataset.VST stands for variance-stabilising transformation and is applied from a fitted dispersion mean.
+```{r}
+#Task 3.11
+#perform rlog transformation
+rld <- rlog(dds)
+
+
+rld_counts <- assay(rld)
+
+#perform vsd transformation
+vsd <- varianceStabilizingTransformation(dds)
+
+
+vsd_counts <- assay(vsd)
+```
+
+#Using the matrices created from the rlog and VST tranformations, a heatmap will be produced.
+```{r}
+#Task 3.12
+
+#load the necessary library
+library("pheatmap")
+
+# Get dds normalized counts
+dds_counts <- counts(dds, normalized = TRUE)
+head(dds_counts)
+
+select <- order(rowMeans(dds_counts), decreasing = TRUE)[1:40]
+
+pheatmap(assay(rld)[select, ])
+
+pheatmap(assay(vsd)[select, ])
+```
+#A heatmap is a graphical representation of data by different shades of colour. The graph looks at individual values within the dataset as a colour, and so is a key part of data visualisation. 
+```{r}
+#Task 3.13
+sample_distance <- dist(t(assay(rld)))
+class(sample_distance)
+
+sdm <- as.matrix(sample_distance)
+class(sdm)
+
+library("RColorBrewer")
+
+#Then, row names will be added
+rownames(sdm) <- rld$Group
+colnames(sdm) <- NULL
+
+# Add colour to the heatmap
+colors <- colorRampPalette(rev(brewer.pal(9, "Blues")))(255)
+
+pheatmap(sdm,
+         clustering_distance_rows = sample_distance,
+         clustering_distance_cols = sample_distance,
+         col = colors)
+```
+
+
+#In this task, we are creating a principle component analysis (PCA). PCA is a technique used when managing large datasets that include lots of different factors/features. PCA allows us to increase the number of interpretations possible, whilst also preseverving the original data. This analysis can be viualised as shown below. PC1 variance = 70%. PC2 variance = 13%.
+```{r}
+#Task 3.14
+plotPCA(rld, intgroup = "condition")
+
+#load necessary library
+library(ggplot2)
+ggsave(file = "figures/PCA_plot_rld.png")
+```
+
+
+#Here, we are plotting a PCA of the VST-transformed data.PC1 variance = 69%. PC2 variance = 14%.As we can see from the two PCA plots, both the PC1 variance and PC2 variance are very similar, different by only 1 value.
+```{r}
+#Task 3.15
+plotPCA(vsd, intgroup = "condition")
+```
+
+
